@@ -731,6 +731,56 @@ const TournamentManager = () => {
     setError('');
   };
 
+  // Download matches and scores as CSV
+  const downloadScoresCSV = () => {
+    if (matches.length === 0) {
+      alert('No match data to download yet!');
+      return;
+    }
+
+    // CSV header
+    let csv = 'Round,Phase,Group,Team A,Score A,Team B,Score B,Winner,Status\n';
+
+    // Add all matches
+    matches.forEach(match => {
+      const winner = match.winnerId 
+        ? teams.find(t => t.id === match.winnerId)?.name || 'TBD'
+        : match.completed ? 'Draw' : 'Pending';
+      
+      csv += `${match.round || ''},`;
+      csv += `${match.phase || ''},`;
+      csv += `${match.group || ''},`;
+      csv += `"${match.teamA.name}",`;
+      csv += `${match.scoreA},`;
+      csv += `"${match.teamB.name}",`;
+      csv += `${match.scoreB},`;
+      csv += `"${winner}",`;
+      csv += `${match.completed ? 'Completed' : 'Pending'}\n`;
+    });
+
+    // Add team standings if available
+    if (teams.length > 0 && phase !== 'setup') {
+      csv += '\n\nTeam Standings\n';
+      csv += 'Team,Total Points,Wins,Losses,Status\n';
+      teams.forEach(team => {
+        const status = eliminatedTeams.includes(team.id) ? 'Eliminated' : 
+                      champion?.id === team.id ? 'Champion' : 'Active';
+        csv += `"${team.name}",${team.totalPoints},${team.wins},${team.losses},${status}\n`;
+      });
+    }
+
+    // Create download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tournament_scores_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Render Setup Screen
   const renderSetup = () => (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-8">
@@ -870,16 +920,28 @@ const TournamentManager = () => {
               </div>
             </div>
             
-            {allComplete && (
+            <div className="flex gap-3">
               <button
-                onClick={showGroupConfigModal}
-                className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/50 flex items-center"
+                onClick={downloadScoresCSV}
+                className="px-6 py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition-all flex items-center gap-2"
+                title="Download scores as CSV"
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download CSV
+              </button>
+              {allComplete && (
+                <button
+                  onClick={showGroupConfigModal}
+                  className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/50 flex items-center"
+                >
                 {currentRound === 1 && 'Choose Group Configuration for Round 2'}
                 {currentRound === 2 && 'Choose Group Configuration for Final'}
                 <ChevronRight className="ml-2" />
               </button>
-            )}
+              )}
+            </div>
           </div>
           
           {/* Group Standings */}
@@ -1393,12 +1455,24 @@ const TournamentManager = () => {
     return (
       <div className="min-h-screen bg-slate-900 p-8">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-center justify-center mb-8">
-            <Trophy className="text-yellow-400 w-16 h-16 mr-4" />
-            <div className="text-center">
-              <h1 className="text-5xl font-bold text-white">FINAL MATCH</h1>
-              <p className="text-slate-400 mt-2">Championship Decider</p>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center flex-1 justify-center">
+              <Trophy className="text-yellow-400 w-16 h-16 mr-4" />
+              <div className="text-center">
+                <h1 className="text-5xl font-bold text-white">FINAL MATCH</h1>
+                <p className="text-slate-400 mt-2">Championship Decider</p>
+              </div>
             </div>
+            <button
+              onClick={downloadScoresCSV}
+              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-all flex items-center gap-2"
+              title="Download scores as CSV"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              CSV
+            </button>
           </div>
           
           <div className="bg-slate-800 rounded-2xl p-8 border-2 border-yellow-500">
@@ -1699,12 +1773,32 @@ const TournamentManager = () => {
           </div>
         </div>
         
-        <button
-          onClick={resetTournament}
-          className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg rounded-xl transition-all shadow-lg shadow-emerald-500/50"
-        >
-          Start New Tournament
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={downloadScoresCSV}
+            className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold text-lg rounded-xl transition-all flex items-center gap-2"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download Complete Results
+          </button>
+          <button
+            onClick={downloadScoresCSV}
+            className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold text-lg rounded-xl transition-all flex items-center gap-2"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download Complete Results
+          </button>
+          <button
+            onClick={resetTournament}
+            className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg rounded-xl transition-all shadow-lg shadow-emerald-500/50"
+          >
+            Start New Tournament
+          </button>
+        </div>
       </div>
     </div>
   );
