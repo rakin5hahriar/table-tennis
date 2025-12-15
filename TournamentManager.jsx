@@ -3,30 +3,60 @@ import { Trophy, AlertCircle, Check, ChevronRight, Award, Users, Target } from '
 
 const TournamentManager = () => {
   // Phase management
-  const [phase, setPhase] = useState('setup'); // 'setup' | 'group' | 'knockout' | 'complete'
-  const [numTeams, setNumTeams] = useState(4);
+  const [phase, setPhase] = useState('setup'); // 'setup' | 'round1' | 'round2' | 'final' | 'complete'
+  const [currentRound, setCurrentRound] = useState(1);
+  const [numTeams, setNumTeams] = useState(6);
   
   // Core data
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
   const [champion, setChampion] = useState(null);
+  const [eliminatedTeams, setEliminatedTeams] = useState([]);
   
   // UI state
-  const [teamNames, setTeamNames] = useState(['', '', '', '', '']);
+  const [teamNames, setTeamNames] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
+  const [showGroupConfig, setShowGroupConfig] = useState(false);
+  const [groupConfigOptions, setGroupConfigOptions] = useState([]);
 
-  // Generate Round Robin matches for Group Stage
-  const generateGroupMatches = (teamsList) => {
+  // Generate Round Robin matches for Group Stage (divided into two groups)
+  const generateGroupMatches = (teamsList, round) => {
     const groupMatches = [];
-    let matchId = 1;
+    let matchId = matches.length + 1;
     
-    for (let i = 0; i < teamsList.length; i++) {
-      for (let j = i + 1; j < teamsList.length; j++) {
+    // Divide teams into two groups
+    const midPoint = Math.ceil(teamsList.length / 2);
+    const groupA = teamsList.slice(0, midPoint);
+    const groupB = teamsList.slice(midPoint);
+    
+    // Generate matches within Group A
+    for (let i = 0; i < groupA.length; i++) {
+      for (let j = i + 1; j < groupA.length; j++) {
         groupMatches.push({
           id: matchId++,
-          phase: 'group',
-          teamA: { id: teamsList[i].id, name: teamsList[i].name },
-          teamB: { id: teamsList[j].id, name: teamsList[j].name },
+          phase: `round${round}`,
+          round: round,
+          group: 'A',
+          teamA: { id: groupA[i].id, name: groupA[i].name },
+          teamB: { id: groupA[j].id, name: groupA[j].name },
+          scoreA: 0,
+          scoreB: 0,
+          winnerId: null,
+          completed: false
+        });
+      }
+    }
+    
+    // Generate matches within Group B
+    for (let i = 0; i < groupB.length; i++) {
+      for (let j = i + 1; j < groupB.length; j++) {
+        groupMatches.push({
+          id: matchId++,
+          phase: `round${round}`,
+          round: round,
+          group: 'B',
+          teamA: { id: groupB[i].id, name: groupB[i].name },
+          teamB: { id: groupB[j].id, name: groupB[j].name },
           scoreA: 0,
           scoreB: 0,
           winnerId: null,
@@ -67,23 +97,26 @@ const TournamentManager = () => {
     }));
     
     setTeams(initialTeams);
-    setMatches(generateGroupMatches(initialTeams));
-    setPhase('group');
+    setCurrentRound(1);
+    setPhase('round1');
+    
+    // Show group configuration modal for Round 1
+    const options = calculateGroupOptions(initialTeams.length);
+    setGroupConfigOptions(options);
+    setShowGroupConfig(true);
   };
 
   // Update match score
-  const updateScore = (matchId, team, increment) => {
+  const updateScore = (matchId, team, newScore) => {
     setMatches(prevMatches => 
       prevMatches.map(match => {
         if (match.id === matchId && !match.completed) {
           const newMatch = { ...match };
-          const currentScore = team === 'A' ? newMatch.scoreA : newMatch.scoreB;
-          const newScore = Math.max(0, currentScore + increment);
           
           if (team === 'A') {
-            newMatch.scoreA = newScore;
+            newMatch.scoreA = Math.max(0, Math.min(30, newScore));
           } else {
-            newMatch.scoreB = newScore;
+            newMatch.scoreB = Math.max(0, Math.min(30, newScore));
           }
           
           return newMatch;
@@ -106,24 +139,30 @@ const TournamentManager = () => {
       
       if (!winnerId) return prevMatches;
       
-      // Update teams with The Accumulator scoring
+      // Update teams with point difference scoring
+      const pointDifference = Math.abs(match.scoreA - match.scoreB);
+      
       setTeams(prevTeams => 
         prevTeams.map(team => {
           if (team.id === match.teamA.id) {
+            const isWinner = winnerId === team.id;
+            const tpgChange = isWinner ? pointDifference : -pointDifference;
             return {
               ...team,
               matchesPlayed: team.matchesPlayed + 1,
-              wins: winnerId === team.id ? team.wins + 1 : team.wins,
-              losses: winnerId !== team.id ? team.losses + 1 : team.losses,
-              totalPoints: team.totalPoints + (winnerId === team.id ? 26 : match.scoreA)
+              wins: isWinner ? team.wins + 1 : team.wins,
+              losses: !isWinner ? team.losses + 1 : team.losses,
+              totalPoints: team.totalPoints + tpgChange
             };
           } else if (team.id === match.teamB.id) {
+            const isWinner = winnerId === team.id;
+            const tpgChange = isWinner ? pointDifference : -pointDifference;
             return {
               ...team,
               matchesPlayed: team.matchesPlayed + 1,
-              wins: winnerId === team.id ? team.wins + 1 : team.wins,
-              losses: winnerId !== team.id ? team.losses + 1 : team.losses,
-              totalPoints: team.totalPoints + (winnerId === team.id ? 26 : match.scoreB)
+              wins: isWinner ? team.wins + 1 : team.wins,
+              losses: !isWinner ? team.losses + 1 : team.losses,
+              totalPoints: team.totalPoints + tpgChange
             };
           }
           return team;
@@ -144,49 +183,302 @@ const TournamentManager = () => {
     return [...teams].sort((a, b) => b.totalPoints - a.totalPoints);
   };
 
-  // Check if all group matches are complete
-  const allGroupMatchesComplete = () => {
-    const groupMatches = matches.filter(m => m.phase === 'group');
-    return groupMatches.length > 0 && groupMatches.every(m => m.completed);
+  // Check if all current round matches are complete
+  const allRoundMatchesComplete = () => {
+    const roundMatches = matches.filter(m => m.round === currentRound);
+    return roundMatches.length > 0 && roundMatches.every(m => m.completed);
+  };
+  
+  // Get teams that played in current round
+  const getCurrentRoundTeams = () => {
+    const roundMatches = matches.filter(m => m.round === currentRound);
+    const teamIds = new Set();
+    roundMatches.forEach(m => {
+      teamIds.add(m.teamA.id);
+      teamIds.add(m.teamB.id);
+    });
+    return teams.filter(t => teamIds.has(t.id));
   };
 
-  // Generate knockout bracket
+  // Get group standings for current round
+  const getGroupStandings = (group, round = currentRound) => {
+    const groupTeamIds = new Set();
+    matches.filter(m => m.round === round && m.group === group).forEach(m => {
+      groupTeamIds.add(m.teamA.id);
+      groupTeamIds.add(m.teamB.id);
+    });
+    
+    return teams
+      .filter(t => groupTeamIds.has(t.id) && !eliminatedTeams.includes(t.id))
+      .sort((a, b) => b.totalPoints - a.totalPoints);
+  };
+
+  // Calculate possible group configurations
+  const calculateGroupOptions = (numQualified) => {
+    const options = [];
+    
+    // Option 1: All teams in 2 equal groups (if even number)
+    if (numQualified % 2 === 0 && numQualified >= 2) {
+      const groupSize = numQualified / 2;
+      options.push({
+        id: 'split-even',
+        name: `2 Groups of ${groupSize}`,
+        description: `Split ${numQualified} teams into 2 equal groups`,
+        groupCount: 2,
+        groupSizes: [groupSize, groupSize]
+      });
+    }
+    
+    // Option 2: One large group (if <= 6 teams)
+    if (numQualified <= 6 && numQualified >= 3) {
+      options.push({
+        id: 'single-group',
+        name: `1 Group of ${numQualified}`,
+        description: `All ${numQualified} teams play in a single group`,
+        groupCount: 1,
+        groupSizes: [numQualified]
+      });
+    }
+    
+    // Option 3: Uneven split (for odd numbers)
+    if (numQualified >= 3 && numQualified % 2 !== 0) {
+      const group1Size = Math.ceil(numQualified / 2);
+      const group2Size = Math.floor(numQualified / 2);
+      options.push({
+        id: 'split-uneven',
+        name: `Group A (${group1Size}) vs Group B (${group2Size})`,
+        description: `Split into uneven groups`,
+        groupCount: 2,
+        groupSizes: [group1Size, group2Size]
+      });
+    }
+    
+    return options;
+  };
+
+  // Show group configuration modal
+  const showGroupConfigModal = () => {
+    let numQualified;
+    
+    // For initial Round 1 setup, use total teams
+    if (currentRound === 1 && matches.length === 0) {
+      numQualified = teams.length;
+    } else {
+      // For subsequent rounds, calculate qualified teams dynamically
+      const roundMatches = matches.filter(m => m.round === currentRound);
+      const hasGroupB = roundMatches.some(m => m.group === 'B');
+      const groupAStandings = getGroupStandings('A');
+      const groupBStandings = getGroupStandings('B');
+      
+      if (hasGroupB) {
+        // Two groups - qualify top teams from each (half of total)
+        const totalInRound = groupAStandings.length + groupBStandings.length;
+        const qualifyPerGroup = Math.ceil(totalInRound / 4); // Aim for ~half to qualify
+        numQualified = qualifyPerGroup * 2;
+      } else {
+        // Single group - qualify top half
+        numQualified = Math.ceil(groupAStandings.length / 2);
+      }
+      
+      // Minimum 2 teams for final
+      numQualified = Math.max(2, numQualified);
+    }
+    
+    const options = calculateGroupOptions(numQualified);
+    setGroupConfigOptions(options);
+    setShowGroupConfig(true);
+  };
+
+  // Advance to next round with chosen configuration
+  const advanceToNextRound = (configId = null) => {
+    // Handle initial Round 1 setup
+    if (currentRound === 1 && matches.length === 0) {
+      const activeTeams = teams.filter(t => !eliminatedTeams.includes(t.id));
+      
+      if (!configId) {
+        setShowGroupConfig(false);
+        return;
+      }
+      
+      let newMatches;
+      if (configId === 'single-group') {
+        newMatches = generateSingleGroupMatches(activeTeams, 1);
+      } else {
+        newMatches = generateGroupMatches(activeTeams, 1);
+      }
+      
+      setMatches(newMatches);
+      setShowGroupConfig(false);
+      return;
+    }
+    
+    // Get qualified teams from current round
+    const roundMatches = matches.filter(m => m.round === currentRound);
+    const hasGroupB = roundMatches.some(m => m.group === 'B');
+    const groupAStandings = getGroupStandings('A');
+    const groupBStandings = getGroupStandings('B');
+    
+    // Determine how many qualify dynamically based on team count
+    let qualifyPerGroup;
+    if (hasGroupB) {
+      // Two groups - calculate qualification dynamically
+      const totalInRound = groupAStandings.length + groupBStandings.length;
+      if (totalInRound <= 4) {
+        qualifyPerGroup = 1; // Top 1 from each (finals)
+      } else {
+        qualifyPerGroup = Math.ceil(groupAStandings.length / 2); // Top half from each group
+      }
+    } else {
+      // Single group - top half qualifies
+      qualifyPerGroup = Math.ceil(groupAStandings.length / 2);
+    }
+    
+    const qualifiedFromA = groupAStandings.slice(0, qualifyPerGroup);
+    const qualifiedFromB = hasGroupB ? groupBStandings.slice(0, qualifyPerGroup) : [];
+    const eliminatedFromA = groupAStandings.slice(qualifyPerGroup);
+    const eliminatedFromB = hasGroupB ? groupBStandings.slice(qualifyPerGroup) : [];
+    
+    // Mark eliminated teams
+    const newEliminated = [
+      ...eliminatedTeams,
+      ...eliminatedFromA.map(t => t.id),
+      ...eliminatedFromB.map(t => t.id)
+    ];
+    setEliminatedTeams(newEliminated);
+    
+    // Reset TPG for qualified teams
+    setTeams(prevTeams =>
+      prevTeams.map(team => {
+        if (newEliminated.includes(team.id)) return team;
+        return {
+          ...team,
+          totalPoints: 0,
+          wins: 0,
+          losses: 0,
+          matchesPlayed: 0
+        };
+      })
+    );
+    
+    const qualifiedTeams = [...qualifiedFromA, ...qualifiedFromB];
+    
+    // Check if we should go to final or another round
+    if (qualifiedTeams.length === 2) {
+      // Only 2 teams left - create final match
+      const finalMatch = {
+        id: matches.length + 1,
+        phase: 'final',
+        round: currentRound + 1,
+        teamA: { id: qualifiedTeams[0].id, name: qualifiedTeams[0].name },
+        teamB: { id: qualifiedTeams[1].id, name: qualifiedTeams[1].name },
+        scoreA: 0,
+        scoreB: 0,
+        winnerId: null,
+        completed: false
+      };
+      
+      setMatches([...matches, finalMatch]);
+      setCurrentRound(currentRound + 1);
+      setPhase('final');
+      setShowGroupConfig(false);
+    } else if (qualifiedTeams.length > 2) {
+      // More than 2 teams - continue with another round
+      if (!configId) {
+        configId = 'split-even'; // Default
+      }
+      
+      let newMatches;
+      if (configId === 'single-group') {
+        newMatches = generateSingleGroupMatches(qualifiedTeams, currentRound + 1);
+      } else {
+        newMatches = generateGroupMatches(qualifiedTeams, currentRound + 1);
+      }
+      
+      setMatches([...matches, ...newMatches]);
+      setCurrentRound(currentRound + 1);
+      
+      // Determine phase based on round number
+      if (currentRound === 1) {
+        setPhase('round2');
+      } else {
+        setPhase('round2'); // Keep as round2 for any additional rounds
+      }
+      
+      setShowGroupConfig(false);
+    }
+  };
+
+  // Generate matches for single group (all teams play each other)
+  const generateSingleGroupMatches = (teamsList, round) => {
+    const groupMatches = [];
+    let matchId = matches.length + 1;
+    
+    // All teams play against each other in one group
+    for (let i = 0; i < teamsList.length; i++) {
+      for (let j = i + 1; j < teamsList.length; j++) {
+        groupMatches.push({
+          id: matchId++,
+          phase: `round${round}`,
+          round: round,
+          group: 'A', // All in group A
+          teamA: { id: teamsList[i].id, name: teamsList[i].name },
+          teamB: { id: teamsList[j].id, name: teamsList[j].name },
+          scoreA: 0,
+          scoreB: 0,
+          winnerId: null,
+          completed: false
+        });
+      }
+    }
+    
+    return groupMatches;
+  };
+
+  // Old knockout function (keeping structure for compatibility)
   const startKnockout = () => {
-    const leaderboard = getLeaderboard();
+    advanceToNextRound();
+  };
+
+  const generateKnockoutBracket_OLD = () => {
+    const groupAStandings = getGroupStandings('A');
+    const groupBStandings = getGroupStandings('B');
     const knockoutMatches = [];
     let matchId = matches.length + 1;
     
+    // For all configurations: Top teams from each group advance
     if (numTeams === 3) {
-      // Only Final: Rank 1 vs Rank 2 (Rank 3 eliminated)
+      // Group A: 2 teams, Group B: 1 team
+      // Final: A1 vs A2 (B has only 1 team, eliminated)
       knockoutMatches.push({
         id: matchId++,
         phase: 'final',
-        teamA: { id: leaderboard[0].id, name: leaderboard[0].name },
-        teamB: { id: leaderboard[1].id, name: leaderboard[1].name },
+        teamA: { id: groupAStandings[0]?.id, name: groupAStandings[0]?.name },
+        teamB: { id: groupAStandings[1]?.id, name: groupAStandings[1]?.name },
         scoreA: 0,
         scoreB: 0,
         winnerId: null,
         completed: false
       });
     } else if (numTeams === 4) {
-      // Semi 1: Rank 1 vs Rank 4
+      // Group A: 2 teams, Group B: 2 teams
+      // Semi 1: A1 vs B2
+      // Semi 2: B1 vs A2
       knockoutMatches.push({
         id: matchId++,
         phase: 'semi',
-        teamA: { id: leaderboard[0].id, name: leaderboard[0].name },
-        teamB: { id: leaderboard[3].id, name: leaderboard[3].name },
+        teamA: { id: groupAStandings[0]?.id, name: groupAStandings[0]?.name },
+        teamB: { id: groupBStandings[1]?.id, name: groupBStandings[1]?.name },
         scoreA: 0,
         scoreB: 0,
         winnerId: null,
         completed: false
       });
       
-      // Semi 2: Rank 2 vs Rank 3
       knockoutMatches.push({
         id: matchId++,
         phase: 'semi',
-        teamA: { id: leaderboard[1].id, name: leaderboard[1].name },
-        teamB: { id: leaderboard[2].id, name: leaderboard[2].name },
+        teamA: { id: groupBStandings[0]?.id, name: groupBStandings[0]?.name },
+        teamB: { id: groupAStandings[1]?.id, name: groupAStandings[1]?.name },
         scoreA: 0,
         scoreB: 0,
         winnerId: null,
@@ -205,23 +497,24 @@ const TournamentManager = () => {
         completed: false
       });
     } else if (numTeams === 5) {
-      // Qualifier: Rank 4 vs Rank 5
+      // Group A: 3 teams, Group B: 2 teams
+      // Qualifier: A3 vs B2 (3rd from A vs 2nd from B)
       knockoutMatches.push({
         id: matchId++,
         phase: 'qualifier',
-        teamA: { id: leaderboard[3].id, name: leaderboard[3].name },
-        teamB: { id: leaderboard[4].id, name: leaderboard[4].name },
+        teamA: { id: groupAStandings[2]?.id, name: groupAStandings[2]?.name },
+        teamB: { id: groupBStandings[1]?.id, name: groupBStandings[1]?.name },
         scoreA: 0,
         scoreB: 0,
         winnerId: null,
         completed: false
       });
       
-      // Semi 1: Rank 1 vs Winner of Qualifier
+      // Semi 1: A1 vs Winner of Qualifier
       knockoutMatches.push({
         id: matchId++,
         phase: 'semi',
-        teamA: { id: leaderboard[0].id, name: leaderboard[0].name },
+        teamA: { id: groupAStandings[0]?.id, name: groupAStandings[0]?.name },
         teamB: { id: null, name: 'TBD' },
         scoreA: 0,
         scoreB: 0,
@@ -229,12 +522,73 @@ const TournamentManager = () => {
         completed: false
       });
       
-      // Semi 2: Rank 2 vs Rank 3
+      // Semi 2: B1 vs A2
       knockoutMatches.push({
         id: matchId++,
         phase: 'semi',
-        teamA: { id: leaderboard[1].id, name: leaderboard[1].name },
-        teamB: { id: leaderboard[2].id, name: leaderboard[2].name },
+        teamA: { id: groupBStandings[0]?.id, name: groupBStandings[0]?.name },
+        teamB: { id: groupAStandings[1]?.id, name: groupAStandings[1]?.name },
+        scoreA: 0,
+        scoreB: 0,
+        winnerId: null,
+        completed: false
+      });
+      
+      // Final: TBD
+      knockoutMatches.push({
+        id: matchId++,
+        phase: 'final',
+        teamA: { id: null, name: 'TBD' },
+        teamB: { id: null, name: 'TBD' },
+        scoreA: 0,
+        scoreB: 0,
+        winnerId: null,
+        completed: false
+      });
+    } else if (numTeams === 6) {
+      // Group A: 3 teams, Group B: 3 teams
+      // Qualifier 1: A2 vs B3
+      knockoutMatches.push({
+        id: matchId++,
+        phase: 'qualifier',
+        teamA: { id: groupAStandings[1]?.id, name: groupAStandings[1]?.name },
+        teamB: { id: groupBStandings[2]?.id, name: groupBStandings[2]?.name },
+        scoreA: 0,
+        scoreB: 0,
+        winnerId: null,
+        completed: false
+      });
+      
+      // Qualifier 2: B2 vs A3
+      knockoutMatches.push({
+        id: matchId++,
+        phase: 'qualifier',
+        teamA: { id: groupBStandings[1]?.id, name: groupBStandings[1]?.name },
+        teamB: { id: groupAStandings[2]?.id, name: groupAStandings[2]?.name },
+        scoreA: 0,
+        scoreB: 0,
+        winnerId: null,
+        completed: false
+      });
+      
+      // Semi 1: A1 vs Winner of Qualifier 2
+      knockoutMatches.push({
+        id: matchId++,
+        phase: 'semi',
+        teamA: { id: groupAStandings[0]?.id, name: groupAStandings[0]?.name },
+        teamB: { id: null, name: 'TBD' },
+        scoreA: 0,
+        scoreB: 0,
+        winnerId: null,
+        completed: false
+      });
+      
+      // Semi 2: B1 vs Winner of Qualifier 1
+      knockoutMatches.push({
+        id: matchId++,
+        phase: 'semi',
+        teamA: { id: groupBStandings[0]?.id, name: groupBStandings[0]?.name },
+        teamB: { id: null, name: 'TBD' },
         scoreA: 0,
         scoreB: 0,
         winnerId: null,
@@ -255,31 +609,73 @@ const TournamentManager = () => {
     }
     
     setMatches([...matches, ...knockoutMatches]);
-    setPhase('knockout');
+    setPhase('knockout_old');
   };
 
-  // Auto-advance winners in knockout bracket
+  // Check if final is complete
   useEffect(() => {
-    if (phase !== 'knockout') return;
+    if (phase === 'final') {
+      const finalMatch = matches.find(m => m.phase === 'final');
+      if (finalMatch && finalMatch.completed && finalMatch.winnerId) {
+        const winner = teams.find(t => t.id === finalMatch.winnerId);
+        if (winner) {
+          setChampion(winner);
+          setPhase('complete');
+        }
+      }
+    }
+  }, [matches, teams, phase]);
+
+  // Auto-advance winners in knockout bracket (OLD)
+  useEffect(() => {
+    if (phase !== 'knockout_old') return;
     
     const knockoutMatches = matches.filter(m => m.phase !== 'group');
-    const qualifierMatch = knockoutMatches.find(m => m.phase === 'qualifier');
+    const qualifierMatches = knockoutMatches.filter(m => m.phase === 'qualifier');
     const semiMatches = knockoutMatches.filter(m => m.phase === 'semi');
     const finalMatch = knockoutMatches.find(m => m.phase === 'final');
     
-    // Handle qualifier completion (5 teams only)
-    if (qualifierMatch && qualifierMatch.completed && qualifierMatch.winnerId) {
-      const winner = teams.find(t => t.id === qualifierMatch.winnerId);
-      const semi1 = semiMatches.find(m => m.teamB.id === null);
-      
-      if (semi1 && winner) {
-        setMatches(prevMatches =>
-          prevMatches.map(m =>
-            m.id === semi1.id
-              ? { ...m, teamB: { id: winner.id, name: winner.name } }
-              : m
-          )
-        );
+    // Handle qualifier completion
+    if (numTeams === 5) {
+      // 5 teams: 1 qualifier match
+      const qualifierMatch = qualifierMatches[0];
+      if (qualifierMatch && qualifierMatch.completed && qualifierMatch.winnerId) {
+        const winner = teams.find(t => t.id === qualifierMatch.winnerId);
+        const semi1 = semiMatches.find(m => m.teamB.id === null);
+        
+        if (semi1 && winner) {
+          setMatches(prevMatches =>
+            prevMatches.map(m =>
+              m.id === semi1.id
+                ? { ...m, teamB: { id: winner.id, name: winner.name } }
+                : m
+            )
+          );
+        }
+      }
+    } else if (numTeams === 6) {
+      // 6 teams: 2 qualifier matches
+      if (qualifierMatches.every(q => q.completed && q.winnerId)) {
+        const qualifier1Winner = teams.find(t => t.id === qualifierMatches[0].winnerId); // 3v6 winner
+        const qualifier2Winner = teams.find(t => t.id === qualifierMatches[1].winnerId); // 4v5 winner
+        
+        // Semi 1: Rank 1 vs Winner of 4v5
+        // Semi 2: Rank 2 vs Winner of 3v6
+        const semi1 = semiMatches[0]; // Should have Rank 1 and needs 4v5 winner
+        const semi2 = semiMatches[1]; // Should have Rank 2 and needs 3v6 winner
+        
+        if (semi1 && semi2 && qualifier1Winner && qualifier2Winner) {
+          setMatches(prevMatches =>
+            prevMatches.map(m => {
+              if (m.id === semi1.id && m.teamB.id === null) {
+                return { ...m, teamB: { id: qualifier2Winner.id, name: qualifier2Winner.name } };
+              } else if (m.id === semi2.id && m.teamB.id === null) {
+                return { ...m, teamB: { id: qualifier1Winner.id, name: qualifier1Winner.name } };
+              }
+              return m;
+            })
+          );
+        }
       }
     }
     
@@ -303,7 +699,7 @@ const TournamentManager = () => {
       }
     }
     
-    // Handle final completion
+    // Handle final completion (OLD)
     if (finalMatch && finalMatch.completed && finalMatch.winnerId) {
       const winner = teams.find(t => t.id === finalMatch.winnerId);
       if (winner) {
@@ -311,15 +707,17 @@ const TournamentManager = () => {
         setPhase('complete');
       }
     }
-  }, [matches, teams, phase, numTeams]);
+  }, [matches, teams, phase]);
 
   // Reset tournament
   const resetTournament = () => {
     setPhase('setup');
+    setCurrentRound(1);
     setTeams([]);
     setMatches([]);
     setChampion(null);
-    setTeamNames(['', '', '', '', '']);
+    setEliminatedTeams([]);
+    setTeamNames(['', '', '', '', '', '']);
     setError('');
   };
 
@@ -336,12 +734,12 @@ const TournamentManager = () => {
           <label className="block text-emerald-400 font-semibold mb-3 text-lg">
             Number of Teams
           </label>
-          <div className="flex gap-4">
-            {[3, 4, 5].map(num => (
+          <div className="grid grid-cols-2 gap-4">
+            {[3, 4, 5, 6].map(num => (
               <button
                 key={num}
                 onClick={() => setNumTeams(num)}
-                className={`flex-1 py-4 px-6 rounded-xl font-bold text-lg transition-all ${
+                className={`py-4 px-6 rounded-xl font-bold text-lg transition-all ${
                   numTeams === num
                     ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/50'
                     : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
@@ -392,24 +790,56 @@ const TournamentManager = () => {
         <div className="mt-8 p-4 bg-slate-700/50 rounded-lg border border-slate-600">
           <h3 className="text-emerald-400 font-semibold mb-2 flex items-center">
             <Target className="w-5 h-5 mr-2" />
-            The Accumulator Rules
+            TPG Scoring Rules
           </h3>
           <ul className="text-slate-300 text-sm space-y-1">
-            <li>• Winner reaches 21 points → Gets <strong>26 points</strong> (21 + 5 bonus)</li>
-            <li>• Loser gets their <strong>exact score</strong> as points</li>
-            <li>• Example: 21-19 → Winner +26, Loser +19</li>
-            <li>• Total Points determine knockout seeding</li>
+            <li>• Winner gets <strong>+Point Difference</strong></li>
+            <li>• Loser gets <strong>-Point Difference</strong></li>
+            <li>• Example: 21-18 → Winner: +3, Loser: -3</li>
+            <li>• Highest Net TPG qualifies for knockout stage</li>
           </ul>
         </div>
       </div>
     </div>
   );
 
-  // Render Group Stage
+  // Render Group Stage (any round)
   const renderGroupStage = () => {
-    const leaderboard = getLeaderboard();
-    const groupMatches = matches.filter(m => m.phase === 'group');
-    const allComplete = allGroupMatchesComplete();
+    const roundMatches = matches.filter(m => m.round === currentRound);
+    
+    // If no matches yet, show waiting message (configuration modal should be open)
+    if (roundMatches.length === 0) {
+      return (
+        <div className="min-h-screen bg-slate-900 p-8 flex items-center justify-center">
+          <div className="text-center">
+            <Users className="text-emerald-500 w-24 h-24 mx-auto mb-4" />
+            <h2 className="text-3xl font-bold text-white mb-2">Configuring Round {currentRound}</h2>
+            <p className="text-slate-400">Please select group configuration...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    const allComplete = allRoundMatchesComplete();
+    const groupAStandings = getGroupStandings('A');
+    const groupBStandings = getGroupStandings('B');
+    const hasGroupB = roundMatches.some(m => m.group === 'B');
+    
+    // Determine how many qualify from each group dynamically
+    let qualifyCountPerGroup;
+    if (hasGroupB) {
+      // Two groups - qualify top half from each
+      qualifyCountPerGroup = Math.ceil(groupAStandings.length / 2);
+    } else {
+      // Single group - qualify top half
+      qualifyCountPerGroup = Math.ceil(groupAStandings.length / 2);
+    }
+    
+    // If we're close to finals, ensure we only take enough for next round
+    const totalInRound = groupAStandings.length + (hasGroupB ? groupBStandings.length : 0);
+    if (totalInRound <= 4) {
+      qualifyCountPerGroup = hasGroupB ? 1 : 2; // Finals approach
+    }
     
     return (
       <div className="min-h-screen bg-slate-900 p-8">
@@ -418,67 +848,356 @@ const TournamentManager = () => {
             <div className="flex items-center">
               <Users className="text-emerald-500 w-12 h-12 mr-4" />
               <div>
-                <h1 className="text-4xl font-bold text-white">Group Stage</h1>
-                <p className="text-slate-400">Round Robin - The Accumulator</p>
+                <h1 className="text-4xl font-bold text-white">Round {currentRound}</h1>
+                <p className="text-slate-400">
+                  {totalInRound === 2 
+                    ? 'Championship Final'
+                    : !hasGroupB 
+                    ? `Single Group - Top ${qualifyCountPerGroup} advance`
+                    : `Top ${qualifyCountPerGroup} from each group advance`
+                  }
+                </p>
               </div>
             </div>
             
             {allComplete && (
               <button
-                onClick={startKnockout}
+                onClick={showGroupConfigModal}
                 className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/50 flex items-center"
               >
-                Start Knockout Stage
+                {currentRound === 1 && 'Choose Group Configuration for Round 2'}
+                {currentRound === 2 && 'Choose Group Configuration for Final'}
                 <ChevronRight className="ml-2" />
               </button>
             )}
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Leaderboard */}
+          {/* Group Standings */}
+          <div className={`grid grid-cols-1 ${hasGroupB ? 'md:grid-cols-2' : ''} gap-6 mb-8`}>
+            {/* Group A */}
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
               <h2 className="text-2xl font-bold text-emerald-400 mb-4 flex items-center">
-                <Trophy className="w-6 h-6 mr-2" />
-                Leaderboard
+                <Users className="w-6 h-6 mr-2" />
+                {hasGroupB ? 'Group A' : 'All Teams'}
               </h2>
               <div className="space-y-2">
-                {leaderboard.map((team, index) => (
-                  <div
-                    key={team.id}
-                    className={`p-4 rounded-lg ${
-                      index === 0
-                        ? 'bg-emerald-900/30 border-2 border-emerald-500'
-                        : 'bg-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <span className="text-2xl font-bold text-emerald-400 w-8">
-                          #{index + 1}
-                        </span>
-                        <span className="text-lg font-semibold text-white ml-3">
-                          {team.name}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-3xl font-bold text-emerald-400">
-                          {team.totalPoints}
+                {groupAStandings.map((team, index) => {
+                  const isQualified = index < qualifyCountPerGroup;
+                  const isGroupChampion = index === 0;
+                  return (
+                    <div
+                      key={team.id}
+                      className={`p-4 rounded-lg ${
+                        isGroupChampion
+                          ? 'bg-emerald-900/30 border-2 border-emerald-500'
+                          : isQualified
+                          ? 'bg-emerald-900/10 border-2 border-emerald-700'
+                          : 'bg-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <span className="text-2xl font-bold text-emerald-400 w-8">
+                            #{index + 1}
+                          </span>
+                          <span className="text-lg font-semibold text-white ml-3">
+                            {team.name}
+                          </span>
+                          {allComplete && (
+                            <span className={`ml-3 text-xs px-2 py-1 rounded ${
+                              isGroupChampion ? 'bg-yellow-600 text-white' :
+                              isQualified ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                            }`}>
+                              {isGroupChampion ? 'GC' : isQualified ? 'Q' : 'E'}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-xs text-slate-400">
-                          {team.wins}W - {team.losses}L
+                        <div className="text-right">
+                          <div className="text-3xl font-bold text-emerald-400">
+                            {team.totalPoints > 0 ? '+' : ''}{team.totalPoints}
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            {team.wins}W-{team.losses}L
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             
-            {/* Matches */}
+            {/* Group B - Only show if it exists */}
+            {hasGroupB && (
+              <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                <h2 className="text-2xl font-bold text-emerald-400 mb-4 flex items-center">
+                  <Users className="w-6 h-6 mr-2" />
+                  Group B
+                </h2>
+              <div className="space-y-2">
+                {groupBStandings.map((team, index) => {
+                  const isQualified = index < qualifyCountPerGroup;
+                  const isGroupChampion = index === 0;
+                  return (
+                    <div
+                      key={team.id}
+                      className={`p-4 rounded-lg ${
+                        isGroupChampion
+                          ? 'bg-emerald-900/30 border-2 border-emerald-500'
+                          : isQualified
+                          ? 'bg-emerald-900/10 border-2 border-emerald-700'
+                          : 'bg-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <span className="text-2xl font-bold text-emerald-400 w-8">
+                            #{index + 1}
+                          </span>
+                          <span className="text-lg font-semibold text-white ml-3">
+                            {team.name}
+                          </span>
+                          {allComplete && (
+                            <span className={`ml-3 text-xs px-2 py-1 rounded ${
+                              isGroupChampion ? 'bg-yellow-600 text-white' :
+                              isQualified ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                            }`}>
+                              {isGroupChampion ? 'GC' : isQualified ? 'Q' : 'E'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="text-3xl font-bold text-emerald-400">
+                            {team.totalPoints > 0 ? '+' : ''}{team.totalPoints}
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            {team.wins}W-{team.losses}L
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            )}
+          </div>
+          
+          {/* Match Results Matrix */}
+          <div className={`grid grid-cols-1 ${hasGroupB ? 'lg:grid-cols-2' : ''} gap-6 mb-8`}>
+            {/* Group A Matrix */}
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-              <h2 className="text-2xl font-bold text-emerald-400 mb-4">Matches</h2>
+              <h2 className="text-2xl font-bold text-emerald-400 mb-4 flex items-center">
+                <Target className="w-6 h-6 mr-2" />
+                {hasGroupB ? 'Group A Results' : 'Match Results'}
+              </h2>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="p-2 text-slate-400 text-xs font-semibold border border-slate-700 bg-slate-900">Team</th>
+                      {getGroupStandings('A').map((team) => (
+                        <th key={team.id} className="p-2 text-emerald-400 text-xs font-semibold border border-slate-700 text-center bg-slate-900">
+                          {team.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getGroupStandings('A').map((rowTeam) => (
+                      <tr key={rowTeam.id}>
+                        <td className="p-2 text-emerald-400 text-xs font-semibold border border-slate-700 bg-slate-900">
+                          {rowTeam.name}
+                        </td>
+                        {getGroupStandings('A').map((colTeam) => {
+                          if (rowTeam.id === colTeam.id) {
+                            return (
+                              <td key={colTeam.id} className="p-3 border border-slate-700 bg-slate-700">
+                                <div className="text-center text-slate-500 text-xl">✕</div>
+                              </td>
+                            );
+                          }
+                          
+                          const match = roundMatches.find(
+                            m => m.group === 'A' && (
+                              (m.teamA.id === rowTeam.id && m.teamB.id === colTeam.id) ||
+                              (m.teamA.id === colTeam.id && m.teamB.id === rowTeam.id)
+                            )
+                          );
+                          
+                          if (!match) {
+                            return (
+                              <td key={colTeam.id} className="p-3 border border-slate-700 bg-slate-700">
+                                <div className="text-center text-slate-500">—</div>
+                              </td>
+                            );
+                          }
+                          
+                          const isTeamA = match.teamA.id === rowTeam.id;
+                          const myScore = isTeamA ? match.scoreA : match.scoreB;
+                          const opponentScore = isTeamA ? match.scoreB : match.scoreA;
+                          const isWinner = match.completed && match.winnerId === rowTeam.id;
+                          const isLoser = match.completed && match.winnerId !== rowTeam.id;
+                          
+                          return (
+                            <td 
+                              key={colTeam.id} 
+                              className={`p-3 border-2 ${
+                                !match.completed ? 'bg-slate-700 border-slate-600' :
+                                isWinner ? 'bg-emerald-600 border-emerald-500' :
+                                isLoser ? 'bg-red-600 border-red-500' : 'bg-slate-700 border-slate-600'
+                              }`}
+                            >
+                              {match.completed ? (
+                                <div className="text-center">
+                                  <div className="text-white font-bold text-lg">
+                                    {myScore}
+                                  </div>
+                                  <div className="text-white/70 text-xs">
+                                    {isWinner ? 'WIN' : 'LOSS'}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-center text-slate-400 text-sm">—</div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 text-xs text-slate-400">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-emerald-600 rounded"></div>
+                    <span>Won</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-600 rounded"></div>
+                    <span>Lost</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-slate-700 rounded"></div>
+                    <span>Pending</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Group B Matrix - Only show if it exists */}
+            {hasGroupB && (
+              <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                <h2 className="text-2xl font-bold text-emerald-400 mb-4 flex items-center">
+                  <Target className="w-6 h-6 mr-2" />
+                  Group B Results
+                </h2>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="p-2 text-slate-400 text-xs font-semibold border border-slate-700 bg-slate-900">Team</th>
+                      {getGroupStandings('B').map((team) => (
+                        <th key={team.id} className="p-2 text-emerald-400 text-xs font-semibold border border-slate-700 text-center bg-slate-900">
+                          {team.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getGroupStandings('B').map((rowTeam) => (
+                      <tr key={rowTeam.id}>
+                        <td className="p-2 text-emerald-400 text-xs font-semibold border border-slate-700 bg-slate-900">
+                          {rowTeam.name}
+                        </td>
+                        {getGroupStandings('B').map((colTeam) => {
+                          if (rowTeam.id === colTeam.id) {
+                            return (
+                              <td key={colTeam.id} className="p-3 border border-slate-700 bg-slate-700">
+                                <div className="text-center text-slate-500 text-xl">✕</div>
+                              </td>
+                            );
+                          }
+                          
+                          const match = roundMatches.find(
+                            m => m.group === 'B' && (
+                              (m.teamA.id === rowTeam.id && m.teamB.id === colTeam.id) ||
+                              (m.teamA.id === colTeam.id && m.teamB.id === rowTeam.id)
+                            )
+                          );
+                          
+                          if (!match) {
+                            return (
+                              <td key={colTeam.id} className="p-3 border border-slate-700 bg-slate-700">
+                                <div className="text-center text-slate-500">—</div>
+                              </td>
+                            );
+                          }
+                          
+                          const isTeamA = match.teamA.id === rowTeam.id;
+                          const myScore = isTeamA ? match.scoreA : match.scoreB;
+                          const opponentScore = isTeamA ? match.scoreB : match.scoreA;
+                          const isWinner = match.completed && match.winnerId === rowTeam.id;
+                          const isLoser = match.completed && match.winnerId !== rowTeam.id;
+                          
+                          return (
+                            <td 
+                              key={colTeam.id} 
+                              className={`p-3 border-2 ${
+                                !match.completed ? 'bg-slate-700 border-slate-600' :
+                                isWinner ? 'bg-emerald-600 border-emerald-500' :
+                                isLoser ? 'bg-red-600 border-red-500' : 'bg-slate-700 border-slate-600'
+                              }`}
+                            >
+                              {match.completed ? (
+                                <div className="text-center">
+                                  <div className="text-white font-bold text-lg">
+                                    {myScore}
+                                  </div>
+                                  <div className="text-white/70 text-xs">
+                                    {isWinner ? 'WIN' : 'LOSS'}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-center text-slate-400 text-sm">—</div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 text-xs text-slate-400">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-emerald-600 rounded"></div>
+                    <span>Won</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-600 rounded"></div>
+                    <span>Lost</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-slate-700 rounded"></div>
+                    <span>Pending</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            )}
+          </div>
+          
+          <div className={`grid grid-cols-1 ${hasGroupB ? 'lg:grid-cols-2' : ''} gap-8`}>
+            {/* Group A Matches */}
+            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+              <h2 className="text-2xl font-bold text-emerald-400 mb-4">
+                {hasGroupB ? 'Group A Matches' : 'All Matches'}
+              </h2>
               <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                {groupMatches.map(match => (
+                {roundMatches.filter(m => m.group === 'A').map(match => (
                   <div
                     key={match.id}
                     className={`p-4 rounded-lg border-2 ${
@@ -499,41 +1218,33 @@ const TournamentManager = () => {
                     
                     {!match.completed ? (
                       <>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => updateScore(match.id, 'A', -1)}
-                              className="w-8 h-8 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-bold"
-                            >
-                              -
-                            </button>
-                            <div className="text-4xl font-bold text-white w-16 text-center">
-                              {match.scoreA}
-                            </div>
-                            <button
-                              onClick={() => updateScore(match.id, 'A', 1)}
-                              className="w-8 h-8 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold"
-                            >
-                              +
-                            </button>
+                        <div className="grid grid-cols-3 gap-3 mb-3 items-center">
+                          <div className="text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max="30"
+                              value={match.scoreA}
+                              onChange={(e) => updateScore(match.id, 'A', parseInt(e.target.value) || 0)}
+                              className="w-full text-4xl font-bold text-center bg-slate-600 text-white rounded-lg py-3 px-2 border-2 border-slate-500 focus:border-emerald-500 focus:outline-none"
+                              placeholder="0"
+                            />
                           </div>
                           
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => updateScore(match.id, 'B', -1)}
-                              className="w-8 h-8 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-bold"
-                            >
-                              -
-                            </button>
-                            <div className="text-4xl font-bold text-white w-16 text-center">
-                              {match.scoreB}
-                            </div>
-                            <button
-                              onClick={() => updateScore(match.id, 'B', 1)}
-                              className="w-8 h-8 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold"
-                            >
-                              +
-                            </button>
+                          <div className="text-2xl font-bold text-emerald-400 text-center">
+                            /
+                          </div>
+                          
+                          <div className="text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max="30"
+                              value={match.scoreB}
+                              onChange={(e) => updateScore(match.id, 'B', parseInt(e.target.value) || 0)}
+                              className="w-full text-4xl font-bold text-center bg-slate-600 text-white rounded-lg py-3 px-2 border-2 border-slate-500 focus:border-emerald-500 focus:outline-none"
+                              placeholder="0"
+                            />
                           </div>
                         </div>
                         
@@ -568,15 +1279,199 @@ const TournamentManager = () => {
                 ))}
               </div>
             </div>
+            
+            {/* Group B Matches - Only show if it exists */}
+            {hasGroupB && (
+              <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                <h2 className="text-2xl font-bold text-emerald-400 mb-4">Group B Matches</h2>
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                {roundMatches.filter(m => m.group === 'B').map(match => (
+                  <div
+                    key={match.id}
+                    className={`p-4 rounded-lg border-2 ${
+                      match.completed
+                        ? 'bg-slate-700/50 border-slate-600'
+                        : 'bg-slate-700 border-emerald-500/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="text-white font-semibold">{match.teamA.name}</div>
+                      </div>
+                      <div className="text-2xl font-bold text-emerald-400 mx-4">vs</div>
+                      <div className="flex-1 text-right">
+                        <div className="text-white font-semibold">{match.teamB.name}</div>
+                      </div>
+                    </div>
+                    
+                    {!match.completed ? (
+                      <>
+                        <div className="grid grid-cols-3 gap-3 mb-3 items-center">
+                          <div className="text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max="30"
+                              value={match.scoreA}
+                              onChange={(e) => updateScore(match.id, 'A', parseInt(e.target.value) || 0)}
+                              className="w-full text-4xl font-bold text-center bg-slate-600 text-white rounded-lg py-3 px-2 border-2 border-slate-500 focus:border-emerald-500 focus:outline-none"
+                              placeholder="0"
+                            />
+                          </div>
+                          
+                          <div className="text-2xl font-bold text-emerald-400 text-center">
+                            /
+                          </div>
+                          
+                          <div className="text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max="30"
+                              value={match.scoreB}
+                              onChange={(e) => updateScore(match.id, 'B', parseInt(e.target.value) || 0)}
+                              className="w-full text-4xl font-bold text-center bg-slate-600 text-white rounded-lg py-3 px-2 border-2 border-slate-500 focus:border-emerald-500 focus:outline-none"
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                        
+                        {(match.scoreA >= 21 || match.scoreB >= 21) && (
+                          <button
+                            onClick={() => finishMatch(match.id)}
+                            className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg transition-all flex items-center justify-center"
+                          >
+                            <Check className="w-5 h-5 mr-2" />
+                            Finish Match
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-2">
+                        <div className="flex items-center justify-center gap-4">
+                          <div className={`text-2xl font-bold ${match.winnerId === match.teamA.id ? 'text-emerald-400' : 'text-slate-500'}`}>
+                            {match.scoreA}
+                          </div>
+                          <div className="text-slate-500">-</div>
+                          <div className={`text-2xl font-bold ${match.winnerId === match.teamB.id ? 'text-emerald-400' : 'text-slate-500'}`}>
+                            {match.scoreB}
+                          </div>
+                        </div>
+                        <div className="text-emerald-400 text-sm mt-1 flex items-center justify-center">
+                          <Check className="w-4 h-4 mr-1" />
+                          Completed
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            )}
           </div>
         </div>
       </div>
     );
   };
 
-  // Render Knockout Stage
+  // Render Final Match
+  const renderFinal = () => {
+    const finalMatch = matches.find(m => m.phase === 'final');
+    
+    if (!finalMatch) return null;
+    
+    return (
+      <div className="min-h-screen bg-slate-900 p-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center justify-center mb-8">
+            <Trophy className="text-yellow-400 w-16 h-16 mr-4" />
+            <div className="text-center">
+              <h1 className="text-5xl font-bold text-white">FINAL MATCH</h1>
+              <p className="text-slate-400 mt-2">Championship Decider</p>
+            </div>
+          </div>
+          
+          <div className="bg-slate-800 rounded-2xl p-8 border-2 border-yellow-500">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex-1 text-center">
+                <div className="text-2xl font-bold text-white mb-2">{finalMatch.teamA.name}</div>
+                <div className="text-sm text-emerald-400">Group Champion</div>
+              </div>
+              <div className="text-3xl font-bold text-yellow-400 mx-6">VS</div>
+              <div className="flex-1 text-center">
+                <div className="text-2xl font-bold text-white mb-2">{finalMatch.teamB.name}</div>
+                <div className="text-sm text-emerald-400">Group Champion</div>
+              </div>
+            </div>
+            
+            {!finalMatch.completed ? (
+              <>
+                <div className="grid grid-cols-3 gap-6 mb-6 items-center">
+                  <div className="text-center">
+                    <input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={finalMatch.scoreA}
+                      onChange={(e) => updateScore(finalMatch.id, 'A', parseInt(e.target.value) || 0)}
+                      className="w-full text-6xl font-bold text-center bg-slate-700 text-white rounded-xl py-6 px-2 border-2 border-slate-600 focus:border-yellow-500 focus:outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  <div className="text-4xl font-bold text-yellow-400 text-center">
+                    /
+                  </div>
+                  
+                  <div className="text-center">
+                    <input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={finalMatch.scoreB}
+                      onChange={(e) => updateScore(finalMatch.id, 'B', parseInt(e.target.value) || 0)}
+                      className="w-full text-6xl font-bold text-center bg-slate-700 text-white rounded-xl py-6 px-2 border-2 border-slate-600 focus:border-yellow-500 focus:outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                
+                {(finalMatch.scoreA >= 21 || finalMatch.scoreB >= 21) && (
+                  <button
+                    onClick={() => finishMatch(finalMatch.id)}
+                    className="w-full py-4 bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold text-xl rounded-xl transition-all flex items-center justify-center shadow-lg shadow-yellow-500/50"
+                  >
+                    <Trophy className="w-6 h-6 mr-2" />
+                    Declare Champion
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-6">
+                <div className="flex items-center justify-center gap-8 mb-4">
+                  <div className={`text-5xl font-bold ${finalMatch.winnerId === finalMatch.teamA.id ? 'text-yellow-400' : 'text-slate-500'}`}>
+                    {finalMatch.scoreA}
+                  </div>
+                  <div className="text-slate-500 text-3xl">-</div>
+                  <div className={`text-5xl font-bold ${finalMatch.winnerId === finalMatch.teamB.id ? 'text-yellow-400' : 'text-slate-500'}`}>
+                    {finalMatch.scoreB}
+                  </div>
+                </div>
+                <div className="text-yellow-400 text-lg flex items-center justify-center">
+                  <Check className="w-6 h-6 mr-2" />
+                  Match Completed
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render Knockout Stage (OLD)
   const renderKnockout = () => {
-    const qualifierMatch = matches.find(m => m.phase === 'qualifier');
+    const qualifierMatches = matches.filter(m => m.phase === 'qualifier');
     const semiMatches = matches.filter(m => m.phase === 'semi');
     const finalMatch = matches.find(m => m.phase === 'final');
     
@@ -592,13 +1487,24 @@ const TournamentManager = () => {
           </div>
           
           <div className="flex flex-col items-center gap-12">
-            {/* Qualifier (5 teams only) */}
-            {qualifierMatch && (
-              <div className="w-full max-w-md">
+            {/* Qualifiers */}
+            {qualifierMatches.length > 0 && (
+              <div className="w-full">
                 <h2 className="text-2xl font-bold text-emerald-400 mb-4 text-center">
-                  Qualifier Match
+                  {qualifierMatches.length === 1 ? 'Qualifier Match' : 'Qualifier Matches'}
                 </h2>
-                {renderKnockoutMatch(qualifierMatch)}
+                <div className={`grid grid-cols-1 ${qualifierMatches.length > 1 ? 'md:grid-cols-2' : ''} gap-8 max-w-4xl mx-auto`}>
+                  {qualifierMatches.map((match, index) => (
+                    <div key={match.id}>
+                      {qualifierMatches.length > 1 && (
+                        <div className="text-center text-slate-400 mb-2 font-semibold">
+                          Qualifier {index + 1}
+                        </div>
+                      )}
+                      {renderKnockoutMatch(match)}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             
@@ -662,41 +1568,33 @@ const TournamentManager = () => {
       
       {match.teamA.id && match.teamB.id && !match.completed && (
         <>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => updateScore(match.id, 'A', -1)}
-                className="w-10 h-10 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-bold"
-              >
-                -
-              </button>
-              <div className="text-5xl font-bold text-white w-20 text-center">
-                {match.scoreA}
-              </div>
-              <button
-                onClick={() => updateScore(match.id, 'A', 1)}
-                className="w-10 h-10 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold"
-              >
-                +
-              </button>
+          <div className="grid grid-cols-3 gap-4 mb-4 items-center">
+            <div className="text-center">
+              <input
+                type="number"
+                min="0"
+                max="30"
+                value={match.scoreA}
+                onChange={(e) => updateScore(match.id, 'A', parseInt(e.target.value) || 0)}
+                className="w-full text-5xl font-bold text-center bg-slate-700 text-white rounded-xl py-4 px-2 border-2 border-slate-600 focus:border-emerald-500 focus:outline-none"
+                placeholder="0"
+              />
             </div>
             
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => updateScore(match.id, 'B', -1)}
-                className="w-10 h-10 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-bold"
-              >
-                -
-              </button>
-              <div className="text-5xl font-bold text-white w-20 text-center">
-                {match.scoreB}
-              </div>
-              <button
-                onClick={() => updateScore(match.id, 'B', 1)}
-                className="w-10 h-10 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold"
-              >
-                +
-              </button>
+            <div className="text-3xl font-bold text-emerald-400 text-center">
+              /
+            </div>
+            
+            <div className="text-center">
+              <input
+                type="number"
+                min="0"
+                max="30"
+                value={match.scoreB}
+                onChange={(e) => updateScore(match.id, 'B', parseInt(e.target.value) || 0)}
+                className="w-full text-5xl font-bold text-center bg-slate-700 text-white rounded-xl py-4 px-2 border-2 border-slate-600 focus:border-emerald-500 focus:outline-none"
+                placeholder="0"
+              />
             </div>
           </div>
           
@@ -779,10 +1677,10 @@ const TournamentManager = () => {
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-emerald-400">
-                      {team.totalPoints} pts
+                      TPG: {team.totalPoints > 0 ? '+' : ''}{team.totalPoints}
                     </div>
                     <div className="text-sm text-slate-400">
-                      {team.wins}W - {team.losses}L
+                      {team.matchesPlayed} Matches | {team.wins}W-{team.losses}L
                     </div>
                   </div>
                 </div>
@@ -805,9 +1703,54 @@ const TournamentManager = () => {
   return (
     <div className="font-sans">
       {phase === 'setup' && renderSetup()}
-      {phase === 'group' && renderGroupStage()}
-      {phase === 'knockout' && renderKnockout()}
+      {(phase === 'round1' || phase === 'round2') && renderGroupStage()}
+      {phase === 'final' && renderFinal()}
+      {phase === 'knockout_old' && renderKnockout()}
       {phase === 'complete' && renderComplete()}
+      
+      {/* Group Configuration Modal - Appears over all phases */}
+      {showGroupConfig && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-slate-800 rounded-lg p-8 max-w-2xl w-full mx-4 border-2 border-emerald-500">
+            <h2 className="text-2xl font-bold text-emerald-400 mb-4 flex items-center gap-2">
+              <Target className="w-6 h-6" />
+              {matches.length === 0 
+                ? `Configure Round ${currentRound} Groups`
+                : `Choose Configuration for Round ${currentRound + 1}`
+              }
+            </h2>
+            <p className="text-slate-300 mb-6">
+              {groupConfigOptions.length > 0 && 
+                `${groupConfigOptions[0].description.split('.')[0]}. Select how to organize the teams:`
+              }
+            </p>
+            <div className="space-y-3">
+              {groupConfigOptions.map((config) => (
+                <button
+                  key={config.id}
+                  onClick={() => advanceToNextRound(config.id)}
+                  className="w-full bg-slate-700 hover:bg-emerald-600 text-white p-4 rounded-lg transition-colors text-left border-2 border-slate-600 hover:border-emerald-400"
+                >
+                  <div className="font-bold text-lg text-emerald-300 mb-1">{config.name}</div>
+                  <div className="text-slate-300 text-sm">{config.description}</div>
+                  <div className="text-slate-400 text-xs mt-2">
+                    {config.groupCount === 1 
+                      ? `All ${config.groupSizes[0]} teams play against each other`
+                      : `${config.groupCount} groups: ${config.groupSizes.join(' vs ')}`
+                    }
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowGroupConfig(false)}
+              className="mt-4 w-full bg-slate-600 hover:bg-slate-500 text-white p-2 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
