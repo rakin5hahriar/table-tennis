@@ -263,25 +263,35 @@ const TournamentManager = () => {
     // For initial Round 1 setup, use total teams
     if (currentRound === 1 && matches.length === 0) {
       numQualified = teams.length;
+      const options = calculateGroupOptions(numQualified);
+      setGroupConfigOptions(options);
+      setShowGroupConfig(true);
+      return;
+    }
+    
+    // For subsequent rounds, calculate qualified teams dynamically
+    const roundMatches = matches.filter(m => m.round === currentRound);
+    const hasGroupB = roundMatches.some(m => m.group === 'B');
+    const groupAStandings = getGroupStandings('A');
+    const groupBStandings = getGroupStandings('B');
+    
+    if (hasGroupB) {
+      // Two groups - qualify top teams from each (half of total)
+      const totalInRound = groupAStandings.length + groupBStandings.length;
+      const qualifyPerGroup = Math.ceil(totalInRound / 4); // Aim for ~half to qualify
+      numQualified = qualifyPerGroup * 2;
     } else {
-      // For subsequent rounds, calculate qualified teams dynamically
-      const roundMatches = matches.filter(m => m.round === currentRound);
-      const hasGroupB = roundMatches.some(m => m.group === 'B');
-      const groupAStandings = getGroupStandings('A');
-      const groupBStandings = getGroupStandings('B');
-      
-      if (hasGroupB) {
-        // Two groups - qualify top teams from each (half of total)
-        const totalInRound = groupAStandings.length + groupBStandings.length;
-        const qualifyPerGroup = Math.ceil(totalInRound / 4); // Aim for ~half to qualify
-        numQualified = qualifyPerGroup * 2;
-      } else {
-        // Single group - qualify top half
-        numQualified = Math.ceil(groupAStandings.length / 2);
-      }
-      
-      // Minimum 2 teams for final
-      numQualified = Math.max(2, numQualified);
+      // Single group - qualify top half
+      numQualified = Math.ceil(groupAStandings.length / 2);
+    }
+    
+    // Minimum 2 teams for final
+    numQualified = Math.max(2, numQualified);
+    
+    // If only 2 teams will qualify, skip modal and go directly to final
+    if (numQualified === 2) {
+      advanceToNextRound('skip-to-final');
+      return;
     }
     
     const options = calculateGroupOptions(numQualified);
