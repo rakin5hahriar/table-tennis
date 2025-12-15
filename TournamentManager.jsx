@@ -783,18 +783,18 @@ const TournamentManager = () => {
 
   // Render Setup Screen
   const renderSetup = () => (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-8">
-      <div className="bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-2xl w-full border border-slate-700">
-        <div className="flex items-center justify-center mb-8">
-          <Trophy className="text-emerald-500 w-16 h-16 mr-4" />
-          <h1 className="text-4xl font-bold text-white">Tournament Manager</h1>
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 sm:p-8">
+      <div className="bg-slate-800 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 max-w-2xl w-full border border-slate-700">
+        <div className="flex items-center justify-center mb-6 sm:mb-8">
+          <Trophy className="text-emerald-500 w-12 h-12 sm:w-16 sm:h-16 mr-3 sm:mr-4" />
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Tournament Manager</h1>
         </div>
         
-        <div className="mb-6">
-          <label className="block text-emerald-400 font-semibold mb-3 text-lg">
+        <div className="mb-4 sm:mb-6">
+          <label className="block text-emerald-400 font-semibold mb-2 sm:mb-3 text-base sm:text-lg">
             Number of Teams
           </label>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {[3, 4, 5, 6].map(num => (
               <button
                 key={num}
@@ -811,11 +811,11 @@ const TournamentManager = () => {
           </div>
         </div>
         
-        <div className="mb-6">
-          <label className="block text-emerald-400 font-semibold mb-3 text-lg">
+        <div className="mb-4 sm:mb-6">
+          <label className="block text-emerald-400 font-semibold mb-2 sm:mb-3 text-base sm:text-lg">
             Team Names
           </label>
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {Array.from({ length: numTeams }).map((_, index) => (
               <input
                 key={index}
@@ -827,22 +827,22 @@ const TournamentManager = () => {
                   setTeamNames(newNames);
                 }}
                 placeholder={`Team ${index + 1} Name`}
-                className="w-full px-4 py-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
               />
             ))}
           </div>
         </div>
         
         {error && (
-          <div className="mb-6 p-4 bg-red-900/30 border border-red-700 rounded-lg flex items-center text-red-400">
-            <AlertCircle className="w-5 h-5 mr-2" />
-            {error}
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-900/30 border border-red-700 rounded-lg flex items-center text-red-400 text-sm sm:text-base">
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" />
+            <span>{error}</span>
           </div>
         )}
         
         <button
           onClick={startTournament}
-          className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg rounded-xl transition-all shadow-lg shadow-emerald-500/50 hover:shadow-emerald-500/70"
+          className="w-full py-3 sm:py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base sm:text-lg rounded-lg sm:rounded-xl transition-all shadow-lg shadow-emerald-500/50 hover:shadow-emerald-500/70"
         >
           Start Tournament
         </button>
@@ -870,11 +870,11 @@ const TournamentManager = () => {
     // If no matches yet, show waiting message (configuration modal should be open)
     if (roundMatches.length === 0) {
       return (
-        <div className="min-h-screen bg-slate-900 p-8 flex items-center justify-center">
-          <div className="text-center">
-            <Users className="text-emerald-500 w-24 h-24 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-white mb-2">Configuring Round {currentRound}</h2>
-            <p className="text-slate-400">Please select group configuration...</p>
+        <div className="min-h-screen bg-slate-900 p-4 sm:p-8 flex items-center justify-center">
+          <div className="text-center px-4">
+            <Users className="text-emerald-500 w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-3 sm:mb-4" />
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Configuring Round {currentRound}</h2>
+            <p className="text-slate-400 text-sm sm:text-base">Please select group configuration...</p>
           </div>
         </div>
       );
@@ -902,13 +902,13 @@ const TournamentManager = () => {
     }
     
     return (
-      <div className="min-h-screen bg-slate-900 p-8">
+      <div className="min-h-screen bg-slate-900 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
             <div className="flex items-center">
-              <Users className="text-emerald-500 w-12 h-12 mr-4" />
+              <Users className="text-emerald-500 w-10 h-10 sm:w-12 sm:h-12 mr-3 sm:mr-4" />
               <div>
-                <h1 className="text-4xl font-bold text-white">Round {currentRound}</h1>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">Round {currentRound}</h1>
                 <p className="text-slate-400">
                   {totalInRound === 2 
                     ? 'Championship Final'
@@ -920,21 +920,22 @@ const TournamentManager = () => {
               </div>
             </div>
             
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
               <button
                 onClick={downloadScoresCSV}
-                className="px-6 py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition-all flex items-center gap-2"
+                className="px-4 sm:px-6 py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
                 title="Download scores as CSV"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Download CSV
+                <span className="hidden sm:inline">Download CSV</span>
+                <span className="sm:hidden">CSV</span>
               </button>
               {allComplete && (
                 <button
                   onClick={showGroupConfigModal}
-                  className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/50 flex items-center"
+                  className="px-4 sm:px-8 py-3 sm:py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg sm:rounded-xl transition-all shadow-lg shadow-emerald-500/50 flex items-center justify-center text-sm sm:text-base"
                 >
                 {currentRound === 1 && 'Choose Group Configuration for Round 2'}
                 {currentRound === 2 && 'Choose Group Configuration for Final'}
@@ -945,10 +946,10 @@ const TournamentManager = () => {
           </div>
           
           {/* Group Standings */}
-          <div className={`grid grid-cols-1 ${hasGroupB ? 'md:grid-cols-2' : ''} gap-6 mb-8`}>
+          <div className={`grid grid-cols-1 ${hasGroupB ? 'lg:grid-cols-2' : ''} gap-4 sm:gap-6 mb-6 sm:mb-8`}>
             {/* Group A */}
-            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-              <h2 className="text-2xl font-bold text-emerald-400 mb-4 flex items-center">
+            <div className="bg-slate-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-700">
+              <h2 className="text-xl sm:text-2xl font-bold text-emerald-400 mb-3 sm:mb-4 flex items-center">
                 <Users className="w-6 h-6 mr-2" />
                 {hasGroupB ? 'Group A' : 'All Teams'}
               </h2>
@@ -959,7 +960,7 @@ const TournamentManager = () => {
                   return (
                     <div
                       key={team.id}
-                      className={`p-4 rounded-lg ${
+                      className={`p-3 sm:p-4 rounded-lg ${
                         isGroupChampion
                           ? 'bg-emerald-900/30 border-2 border-emerald-500'
                           : isQualified
@@ -1001,8 +1002,8 @@ const TournamentManager = () => {
             
             {/* Group B - Only show if it exists */}
             {hasGroupB && (
-              <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-                <h2 className="text-2xl font-bold text-emerald-400 mb-4 flex items-center">
+              <div className="bg-slate-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-700">
+                <h2 className="text-xl sm:text-2xl font-bold text-emerald-400 mb-3 sm:mb-4 flex items-center">
                   <Users className="w-6 h-6 mr-2" />
                   Group B
                 </h2>
@@ -1056,10 +1057,10 @@ const TournamentManager = () => {
           </div>
           
           {/* Match Results Matrix */}
-          <div className={`grid grid-cols-1 ${hasGroupB ? 'lg:grid-cols-2' : ''} gap-6 mb-8`}>
+          <div className={`grid grid-cols-1 ${hasGroupB ? 'lg:grid-cols-2' : ''} gap-4 sm:gap-6 mb-6 sm:mb-8`}>
             {/* Group A Matrix */}
-            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-              <h2 className="text-2xl font-bold text-emerald-400 mb-4 flex items-center">
+            <div className="bg-slate-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-700">
+              <h2 className="text-xl sm:text-2xl font-bold text-emerald-400 mb-3 sm:mb-4 flex items-center">
                 <Target className="w-6 h-6 mr-2" />
                 {hasGroupB ? 'Group A Results' : 'Match Results'}
               </h2>
@@ -1160,8 +1161,8 @@ const TournamentManager = () => {
             
             {/* Group B Matrix - Only show if it exists */}
             {hasGroupB && (
-              <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-                <h2 className="text-2xl font-bold text-emerald-400 mb-4 flex items-center">
+              <div className="bg-slate-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-700">
+                <h2 className="text-xl sm:text-2xl font-bold text-emerald-400 mb-3 sm:mb-4 flex items-center">
                   <Target className="w-6 h-6 mr-2" />
                   Group B Results
                 </h2>
@@ -1262,17 +1263,17 @@ const TournamentManager = () => {
             )}
           </div>
           
-          <div className={`grid grid-cols-1 ${hasGroupB ? 'lg:grid-cols-2' : ''} gap-8`}>
+          <div className={`grid grid-cols-1 ${hasGroupB ? 'lg:grid-cols-2' : ''} gap-4 sm:gap-6 lg:gap-8`}>
             {/* Group A Matches */}
-            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-              <h2 className="text-2xl font-bold text-emerald-400 mb-4">
+            <div className="bg-slate-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-700">
+              <h2 className="text-xl sm:text-2xl font-bold text-emerald-400 mb-3 sm:mb-4">
                 {hasGroupB ? 'Group A Matches' : 'All Matches'}
               </h2>
-              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+              <div className="space-y-3 sm:space-y-4 max-h-[500px] sm:max-h-[600px] overflow-y-auto pr-1 sm:pr-2">
                 {roundMatches.filter(m => m.group === 'A').map(match => (
                   <div
                     key={match.id}
-                    className={`p-4 rounded-lg border-2 ${
+                    className={`p-3 sm:p-4 rounded-lg border-2 ${
                       match.completed
                         ? 'bg-slate-700/50 border-slate-600'
                         : 'bg-slate-700 border-emerald-500/30'
@@ -1453,14 +1454,14 @@ const TournamentManager = () => {
     if (!finalMatch) return null;
     
     return (
-      <div className="min-h-screen bg-slate-900 p-8">
+      <div className="min-h-screen bg-slate-900 p-4 sm:p-8">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between mb-6 sm:mb-8 gap-4">
             <div className="flex items-center flex-1 justify-center">
-              <Trophy className="text-yellow-400 w-16 h-16 mr-4" />
+              <Trophy className="text-yellow-400 w-12 h-12 sm:w-16 sm:h-16 mr-3 sm:mr-4" />
               <div className="text-center">
-                <h1 className="text-5xl font-bold text-white">FINAL MATCH</h1>
-                <p className="text-slate-400 mt-2">Championship Decider</p>
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white">FINAL MATCH</h1>
+                <p className="text-slate-400 mt-1 sm:mt-2 text-sm sm:text-base">Championship Decider</p>
               </div>
             </div>
             <button
@@ -1475,22 +1476,22 @@ const TournamentManager = () => {
             </button>
           </div>
           
-          <div className="bg-slate-800 rounded-2xl p-8 border-2 border-yellow-500">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex-1 text-center">
-                <div className="text-2xl font-bold text-white mb-2">{finalMatch.teamA.name}</div>
-                <div className="text-sm text-emerald-400">Group Champion</div>
+          <div className="bg-slate-800 rounded-xl sm:rounded-2xl p-4 sm:p-8 border-2 border-yellow-500">
+            <div className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-0">
+              <div className="flex-1 text-center min-w-0 w-full sm:w-auto">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1 sm:mb-2 truncate px-1">{finalMatch.teamA.name}</div>
+                <div className="text-xs sm:text-sm text-emerald-400">Group Champion</div>
               </div>
-              <div className="text-3xl font-bold text-yellow-400 mx-6">VS</div>
-              <div className="flex-1 text-center">
-                <div className="text-2xl font-bold text-white mb-2">{finalMatch.teamB.name}</div>
-                <div className="text-sm text-emerald-400">Group Champion</div>
+              <div className="text-2xl sm:text-3xl font-bold text-yellow-400 px-4 sm:px-6 flex-shrink-0">VS</div>
+              <div className="flex-1 text-center min-w-0 w-full sm:w-auto">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1 sm:mb-2 truncate px-1">{finalMatch.teamB.name}</div>
+                <div className="text-xs sm:text-sm text-emerald-400">Group Champion</div>
               </div>
             </div>
             
             {!finalMatch.completed ? (
               <>
-                <div className="grid grid-cols-3 gap-6 mb-6 items-center">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-6 mb-4 sm:mb-6 items-center">
                   <div className="text-center">
                     <input
                       type="number"
@@ -1498,12 +1499,12 @@ const TournamentManager = () => {
                       max="30"
                       value={finalMatch.scoreA}
                       onChange={(e) => updateScore(finalMatch.id, 'A', parseInt(e.target.value) || 0)}
-                      className="w-full text-6xl font-bold text-center bg-slate-700 text-white rounded-xl py-6 px-2 border-2 border-slate-600 focus:border-yellow-500 focus:outline-none"
+                      className="w-full text-3xl sm:text-4xl lg:text-6xl font-bold text-center bg-slate-700 text-white rounded-lg sm:rounded-xl py-3 sm:py-4 lg:py-6 px-1 sm:px-2 border-2 border-slate-600 focus:border-yellow-500 focus:outline-none"
                       placeholder="0"
                     />
                   </div>
                   
-                  <div className="text-4xl font-bold text-yellow-400 text-center">
+                  <div className="text-3xl sm:text-4xl font-bold text-yellow-400 text-center">
                     /
                   </div>
                   
@@ -1514,7 +1515,7 @@ const TournamentManager = () => {
                       max="30"
                       value={finalMatch.scoreB}
                       onChange={(e) => updateScore(finalMatch.id, 'B', parseInt(e.target.value) || 0)}
-                      className="w-full text-6xl font-bold text-center bg-slate-700 text-white rounded-xl py-6 px-2 border-2 border-slate-600 focus:border-yellow-500 focus:outline-none"
+                      className="w-full text-3xl sm:text-4xl lg:text-6xl font-bold text-center bg-slate-700 text-white rounded-lg sm:rounded-xl py-3 sm:py-4 lg:py-6 px-1 sm:px-2 border-2 border-slate-600 focus:border-yellow-500 focus:outline-none"
                       placeholder="0"
                     />
                   </div>
@@ -1523,26 +1524,26 @@ const TournamentManager = () => {
                 {(finalMatch.scoreA >= 21 || finalMatch.scoreB >= 21) && (
                   <button
                     onClick={() => finishMatch(finalMatch.id)}
-                    className="w-full py-4 bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold text-xl rounded-xl transition-all flex items-center justify-center shadow-lg shadow-yellow-500/50"
+                    className="w-full py-3 sm:py-4 bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold text-base sm:text-lg lg:text-xl rounded-lg sm:rounded-xl transition-all flex items-center justify-center shadow-lg shadow-yellow-500/50"
                   >
-                    <Trophy className="w-6 h-6 mr-2" />
+                    <Trophy className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
                     Declare Champion
                   </button>
                 )}
               </>
             ) : (
-              <div className="text-center py-6">
-                <div className="flex items-center justify-center gap-8 mb-4">
-                  <div className={`text-5xl font-bold ${finalMatch.winnerId === finalMatch.teamA.id ? 'text-yellow-400' : 'text-slate-500'}`}>
+              <div className="text-center py-4 sm:py-6">
+                <div className="flex items-center justify-center gap-4 sm:gap-8 mb-3 sm:mb-4">
+                  <div className={`text-3xl sm:text-4xl lg:text-5xl font-bold ${finalMatch.winnerId === finalMatch.teamA.id ? 'text-yellow-400' : 'text-slate-500'}`}>
                     {finalMatch.scoreA}
                   </div>
-                  <div className="text-slate-500 text-3xl">-</div>
-                  <div className={`text-5xl font-bold ${finalMatch.winnerId === finalMatch.teamB.id ? 'text-yellow-400' : 'text-slate-500'}`}>
+                  <div className="text-slate-500 text-2xl sm:text-3xl">-</div>
+                  <div className={`text-3xl sm:text-4xl lg:text-5xl font-bold ${finalMatch.winnerId === finalMatch.teamB.id ? 'text-yellow-400' : 'text-slate-500'}`}>
                     {finalMatch.scoreB}
                   </div>
                 </div>
-                <div className="text-yellow-400 text-lg flex items-center justify-center">
-                  <Check className="w-6 h-6 mr-2" />
+                <div className="text-yellow-400 text-base sm:text-lg flex items-center justify-center">
+                  <Check className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
                   Match Completed
                 </div>
               </div>
@@ -1728,42 +1729,42 @@ const TournamentManager = () => {
           <Award className="text-yellow-400 w-32 h-32 mx-auto drop-shadow-[0_0_30px_rgba(250,204,21,0.6)]" />
         </div>
         
-        <h1 className="text-6xl font-bold text-white mb-4">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-3 sm:mb-4 px-2">
           🏆 CHAMPION! 🏆
         </h1>
         
-        <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-slate-900 text-5xl font-bold py-6 px-12 rounded-2xl mb-8 shadow-2xl shadow-yellow-500/50">
+        <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-slate-900 text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold py-4 sm:py-5 md:py-6 px-4 sm:px-8 md:px-12 rounded-xl sm:rounded-2xl mb-6 sm:mb-8 shadow-2xl shadow-yellow-500/50 text-center break-words">
           {champion?.name}
         </div>
         
-        <div className="bg-slate-800 rounded-2xl p-8 max-w-2xl mx-auto border border-slate-700 mb-8">
-          <h2 className="text-2xl font-bold text-emerald-400 mb-6">Final Standings</h2>
-          <div className="space-y-3">
+        <div className="bg-slate-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 max-w-2xl mx-auto border border-slate-700 mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-emerald-400 mb-4 sm:mb-6">Final Standings</h2>
+          <div className="space-y-2 sm:space-y-3">
             {getLeaderboard().map((team, index) => (
               <div
                 key={team.id}
-                className={`p-4 rounded-lg ${
+                className={`p-3 sm:p-4 rounded-lg ${
                   team.id === champion?.id
                     ? 'bg-yellow-900/30 border-2 border-yellow-500'
                     : 'bg-slate-700'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <span className={`text-2xl font-bold w-12 ${
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center min-w-0 flex-1">
+                    <span className={`text-xl sm:text-2xl font-bold w-8 sm:w-12 flex-shrink-0 ${
                       team.id === champion?.id ? 'text-yellow-400' : 'text-slate-400'
                     }`}>
                       #{index + 1}
                     </span>
-                    <span className="text-xl font-semibold text-white">
+                    <span className="text-base sm:text-lg md:text-xl font-semibold text-white truncate">
                       {team.name}
                     </span>
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-emerald-400">
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-emerald-400">
                       TPG: {team.totalPoints > 0 ? '+' : ''}{team.totalPoints}
                     </div>
-                    <div className="text-sm text-slate-400">
+                    <div className="text-xs sm:text-sm text-slate-400">
                       {team.matchesPlayed} Matches | {team.wins}W-{team.losses}L
                     </div>
                   </div>
@@ -1773,28 +1774,20 @@ const TournamentManager = () => {
           </div>
         </div>
         
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
           <button
             onClick={downloadScoresCSV}
-            className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold text-lg rounded-xl transition-all flex items-center gap-2"
+            className="px-6 sm:px-8 py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold text-base sm:text-lg rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-2"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            Download Complete Results
-          </button>
-          <button
-            onClick={downloadScoresCSV}
-            className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold text-lg rounded-xl transition-all flex items-center gap-2"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Download Complete Results
+            <span className="hidden sm:inline">Download Complete Results</span>
+            <span className="sm:hidden">Download Results</span>
           </button>
           <button
             onClick={resetTournament}
-            className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg rounded-xl transition-all shadow-lg shadow-emerald-500/50"
+            className="px-6 sm:px-8 py-3 sm:py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base sm:text-lg rounded-lg sm:rounded-xl transition-all shadow-lg shadow-emerald-500/50"
           >
             Start New Tournament
           </button>
@@ -1814,30 +1807,32 @@ const TournamentManager = () => {
       
       {/* Group Configuration Modal - Appears over all phases */}
       {showGroupConfig && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-lg p-8 max-w-2xl w-full mx-4 border-2 border-emerald-500">
-            <h2 className="text-2xl font-bold text-emerald-400 mb-4 flex items-center gap-2">
-              <Target className="w-6 h-6" />
-              {matches.length === 0 
-                ? `Configure Round ${currentRound} Groups`
-                : `Choose Configuration for Round ${currentRound + 1}`
-              }
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-lg sm:rounded-xl p-4 sm:p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-emerald-500">
+            <h2 className="text-xl sm:text-2xl font-bold text-emerald-400 mb-3 sm:mb-4 flex items-center gap-2">
+              <Target className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="break-words">
+                {matches.length === 0 
+                  ? `Configure Round ${currentRound} Groups`
+                  : `Choose Configuration for Round ${currentRound + 1}`
+                }
+              </span>
             </h2>
-            <p className="text-slate-300 mb-6">
+            <p className="text-slate-300 mb-4 sm:mb-6 text-sm sm:text-base">
               {groupConfigOptions.length > 0 && 
                 `${groupConfigOptions[0].description.split('.')[0]}. Select how to organize the teams:`
               }
             </p>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {groupConfigOptions.map((config) => (
                 <button
                   key={config.id}
                   onClick={() => advanceToNextRound(config.id)}
-                  className="w-full bg-slate-700 hover:bg-emerald-600 text-white p-4 rounded-lg transition-colors text-left border-2 border-slate-600 hover:border-emerald-400"
+                  className="w-full bg-slate-700 hover:bg-emerald-600 text-white p-3 sm:p-4 rounded-lg transition-colors text-left border-2 border-slate-600 hover:border-emerald-400"
                 >
-                  <div className="font-bold text-lg text-emerald-300 mb-1">{config.name}</div>
-                  <div className="text-slate-300 text-sm">{config.description}</div>
-                  <div className="text-slate-400 text-xs mt-2">
+                  <div className="font-bold text-base sm:text-lg text-emerald-300 mb-1">{config.name}</div>
+                  <div className="text-slate-300 text-xs sm:text-sm">{config.description}</div>
+                  <div className="text-slate-400 text-xs mt-1 sm:mt-2">
                     {config.groupCount === 1 
                       ? `All ${config.groupSizes[0]} teams play against each other`
                       : `${config.groupCount} groups: ${config.groupSizes.join(' vs ')}`
@@ -1848,7 +1843,7 @@ const TournamentManager = () => {
             </div>
             <button
               onClick={() => setShowGroupConfig(false)}
-              className="mt-4 w-full bg-slate-600 hover:bg-slate-500 text-white p-2 rounded-lg transition-colors"
+              className="mt-3 sm:mt-4 w-full bg-slate-600 hover:bg-slate-500 text-white p-2 sm:p-2.5 rounded-lg transition-colors text-sm sm:text-base"
             >
               Cancel
             </button>
